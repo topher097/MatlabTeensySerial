@@ -4,8 +4,8 @@ close all;
 disp("Starting...");
 
 % Declare vars
-readVarCount = 24;          % number of variables to be read from serial
-sendVarCount = 4;           % number of variables to be sent by serial
+readVarCount = 3;           % number of variables to be read from serial
+sendVarCount = 3;           % number of variables to be sent by serial
 readVarType = "string";     % datatype of variables read from serial
 sendVarType = "double";     % datatype of variables sent by serial
 BAUD = 115200;              % baud rate of serial connection
@@ -52,40 +52,44 @@ sendData = struct("time",[], ...
                   "var1",[], ...
                   "var2",[]);
 
-
-% Test GUI
-DlgH = figure;
-%DlgH.Position = [1000 800 100 50]; % [x_pos y_pos height width]
-H = uicontrol('Style', 'PushButton', ...
-                    'String', 'Break', ...
-                    'Callback', 'delete(gcbf)');
-while (ishandle(H))
+delayMS = 50;
+hWaitbar = waitbar(0.99, 'connect', 'Name', 'Solving problem','CreateCancelBtn','delete(gcbf)');
+for k=1:1e16
     % Read data from teensy via serial
     if (teensy.NumBytesAvailable > 0)
         start = tic;
         data = str2double(split(readline(teensy), ","));
-        disp(data);
         i = 1;
         teensy.UserData.time(end+1)     = data(i); i=i+1;
         teensy.UserData.var1(end+1)     = data(i); i=i+1;
         teensy.UserData.var2(end+1)     = data(i);
        
-        % Display data
-        disp(data);
+        % Display in data
+        disp(data');
         
         % Modify data to send to teensy
         i = 1;
-        sendData.time(end+1) = toc(start); i=i+1;
-        sendData.var1(end+1) = teensy.UserData.var1(end) + 0.5;
-        sendData.var2(end+1) = teensy.UserData.var2(end) + 0.1;
+        sendData.time(end+1) = int8((toc(start))*1000);         i=i+1;
+        sendData.var1(end+1) = teensy.UserData.var1(end) +1;    i=i+1;
+        sendData.var2(end+1) = teensy.UserData.var2(end) +1;
         
         % Send data to teensy
-        pause(0.5);         % Pause for 500 milliseconds
-        sendString = "";
-        sendString = append(sendString, num2str(sendData.time(end)));
-        sendString = append(sendString, num2str(sendData.var1(end)));
-        sendString = append(sendString, num2str(sendData.var2(end)));
-        sendString = append(sendString, terminator);
-        writeline(teensy, sendString);        
+        pause(delayMS/1000);         % Pause for n milliseconds
+        vars = [sendData.time(end), sendData.var1(end), sendData.var2(end)];
+        delim = ',';
+        terminator = '?';
+        sendString = append(strjoin(string(vars), delim), terminator);
+        writeline(teensy, sendString);       
+        
+        % Display out data string
+        disp(vars);
+        disp("------------------------------");
+    end
+    if ~ishandle(hWaitbar)
+        break;
     end
 end
+delete(hWaitbar);
+delete(teensy);
+disp("stopped connection");
+
