@@ -88,6 +88,4 @@ while (ishandle(H))
         sendString = append(sendString, terminator);
         writeline(teensy, sendString);        
     end
-    
-    
 end
